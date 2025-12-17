@@ -2,3 +2,6 @@ videos/
 images/
 venv
 .env
+*.pt
+mobileclip_blt.ts
+runs/
