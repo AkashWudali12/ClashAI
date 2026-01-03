@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 def get_state_from_frame(frame):
     """return state object from frame in video"""
@@ -91,6 +92,59 @@ def analyze_video_frame_by_frame(video_path, template_path):
     cv2.destroyAllWindows()
     print("--- Analysis Complete ---")
 
+def run_background_extraction(video_path):
+    # Use Mixture of Gaussain distribution models
+    # basically colors (rgb vals) that appear in many consecutive frames will be considered part of the background
+    # backSub = cv2.createBackgroundSubtractorMOG2(history=10, varThreshold=50, detectShadows=True)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+    backSub = cv2.bgsegm.createBackgroundSubtractorGMG(initializationFrames=120, decisionThreshold=0.8)
+
+    cap = cv2.VideoCapture(video_path)
+
+    # Check if video opened successfully
+    if not cap.isOpened():
+        print(f"Error: Could not open video file at {video_path}")
+        return
+
+    print("--- Starting Frame-by-Frame Analysis ---")
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # --- THE CORE LOGIC ---
+        # Apply the subtractor to get the foreground mask
+        fg_mask = backSub.apply(frame)
+
+        # Clean up the mask (Morphological Operations)
+        # kernel = np.ones((5, 5), np.uint8)
+        fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, kernel)
+        fg_mask = cv2.dilate(fg_mask, kernel, iterations=2)
+
+        # Find and draw contours on the ORIGINAL frame
+        contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        for cnt in contours:
+            if cv2.contourArea(cnt) > 200: # Adjust based on character size
+                x, y, w, h = cv2.boundingRect(cnt)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(frame, "Moving Object", (x, y-10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # --- LOCAL DISPLAY ---
+        cv2.imshow('Clash Detector - Result', frame)
+        # cv2.imshow('MOG2 Background Mask', fg_mask)
+
+        # Press 'q' to exit the loop
+        if cv2.waitKey(30) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
 video_file_path = 'videos/vid_2.mp4' 
 template_image_path = "images/default_arena.jpeg"
-analyze_video_frame_by_frame(video_file_path, template_image_path)
+run_background_extraction(video_file_path)
