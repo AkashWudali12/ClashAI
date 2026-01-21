@@ -5,3 +5,4 @@ venv
 *.pt
 mobileclip_blt.ts
 runs/
+__pycache__/
