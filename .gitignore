@@ -6,3 +6,5 @@ venv
 mobileclip_blt.ts
 runs/
 __pycache__/
+tower_images/
+.DS_Store
